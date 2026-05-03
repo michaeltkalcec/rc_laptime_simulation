@@ -1,17 +1,24 @@
 import matplotlib.pyplot as plt
 import numpy
 
-Kv = 2600                           # U/min pro Volt
+# Hobbywing 21.5
+# Kv = 2600                           # U/min pro Volt
+# Kv_rad = Kv * 2 * numpy.pi / 60     # rad/s pro Volt
+# Kt = 1/Kv_rad                       # ~0.00368 Nm/A
+# R  = 0.0551                         #Ohm
+# I_max = 50                          #A
+
+# Ruddog 540p 21.5
+Kv = 2200                           # U/min pro Volt
 Kv_rad = Kv * 2 * numpy.pi / 60     # rad/s pro Volt
 Kt = 1/Kv_rad                       # ~0.00368 Nm/A
-R  = 0.0551                         #Ohm
+R  = 0.0514                         #Ohm
 I_max = 50                          #A
 
 rho = 1.2
 CdA = 0.006
 
 V_bat = 8.4
-n = 4.5
 mass = 1.32
 
 def simulate_motor(I_max, V_bat=8.4, dg=4.5):
@@ -28,13 +35,13 @@ def simulate_motor(I_max, V_bat=8.4, dg=4.5):
         F_drag = 0.5 * rho * CdA * v[i-1]**2
         a = (torque*dg / 0.031 - F_drag) / mass
         v.append(v[i-1] + a * 0.005)
-        rpm_mot.append(v[i] * n / (2 * numpy.pi * 0.031) * 60)
+        rpm_mot.append(v[i] * dg / (2 * numpy.pi * 0.031) * 60)
 
     print(v[-1])
     return v, i_mot, V_mot
 
-def simulate_torque(v, I_max=50, V_bat=8.4):
-    rpm = v * n / (2 * numpy.pi * 0.031) * 60
+def simulate_torque(v, I_max=50, V_bat=8.4, dg=4.5):
+    rpm = v * dg / (2 * numpy.pi * 0.031) * 60
     h_i_mot = (V_bat - rpm/Kv) / R
     i_mot = numpy.minimum(h_i_mot, I_max)
     torque = i_mot * Kt

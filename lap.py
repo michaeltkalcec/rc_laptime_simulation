@@ -83,7 +83,7 @@ def run_sim(dg):
     ds = numpy.append(ds, ds[-1]) 
 
     for i in range(len(v_forward) - 1):
-        torque = simulate_torque(v_forward[i], I_max=50, V_bat=8.4)
+        torque = simulate_torque(v_forward[i], I_max=50, V_bat=8.4, dg=dg)
         F_drag = 0.5 * rho * CdA * v_forward[i]**2
         ax_acc_max = (torque * dg / 0.031 - F_drag) / mass
         v_possible = numpy.sqrt(v_forward[i]**2 + 2 * ax_acc_max * ds[i])
@@ -181,17 +181,24 @@ def run_sim(dg):
     return lap_time, v_max
 
 if __name__ == "__main__":
+    # lt, v_max = run_sim(4)
     a_mass = []
     a_lt = []
     a_v_max = []
-    for mass in numpy.linspace(1, 20, 20):
+    for mass in numpy.linspace(2, 6, 50):
         print(f"Übersetung: {mass}")
         lt, v_max = run_sim(mass)
         a_mass.append(mass)
         a_lt.append(lt)
         a_v_max.append(v_max)
+    plt.subplot(211)
+    plt.plot(a_mass, a_lt, 'o-')
+    plt.xlabel("Untersetzung")
+    plt.ylabel("Lap Time (s)")
+    plt.grid(True)
+    plt.subplot(212)
     plt.plot(a_mass, a_v_max, 'o-')
     plt.xlabel("Untersetzung")
-    plt.ylabel("Maximale Geschwindigkeit (m/s)")
+    plt.ylabel("Top Speed (m/s)")
     plt.grid(True)
     plt.show()  
