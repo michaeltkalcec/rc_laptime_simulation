@@ -2,21 +2,21 @@ import matplotlib.pyplot as plt
 import numpy
 
 # Hobbywing 21.5
-# Kv = 2600                           # U/min pro Volt
-# Kv_rad = Kv * 2 * numpy.pi / 60     # rad/s pro Volt
-# Kt = 1/Kv_rad                       # ~0.00368 Nm/A
-# R  = 0.0551                         #Ohm
-# I_max = 50                          #A
-
-# Ruddog 540p 21.5
-Kv = 2200                           # U/min pro Volt
+Kv = 2600                           # U/min pro Volt
 Kv_rad = Kv * 2 * numpy.pi / 60     # rad/s pro Volt
 Kt = 1/Kv_rad                       # ~0.00368 Nm/A
-R  = 0.0514                         #Ohm
+R  = 0.0551                         #Ohm
 I_max = 50                          #A
 
+# Ruddog 540p 21.5
+# Kv = 2200                           # U/min pro Volt
+# Kv_rad = Kv * 2 * numpy.pi / 60     # rad/s pro Volt
+# Kt = 1/Kv_rad                       # ~0.00368 Nm/A
+# R  = 0.0514                         #Ohm
+# I_max = 50                          #A
+
 rho = 1.2
-CdA = 0.006
+CdA = 0.01
 
 V_bat = 8.4
 mass = 1.32

@@ -74,7 +74,3 @@ rc_aptime_simulation/
 └── docs/
     └── simulation_results.png  # Example output
 ```
-
-## Typical Results
-
-Expected lap times for club tracks: **2-10 seconds** depending on track size and gear ratio.
