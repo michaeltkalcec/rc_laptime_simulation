@@ -4,7 +4,7 @@ from motor import simulate_motor, simulate_torque
 from scipy.interpolate import splprep, splev
 from matplotlib.collections import LineCollection
 
-def run_sim(dg):
+def run_sim(mass):
     fy_max = 13.5
 
     file = open("track_points.txt", "r")
@@ -61,7 +61,7 @@ def run_sim(dg):
     mass = 1.32          # kg
 
     # v_max = v[numpy.argmin(numpy.abs(P_required - P_max))]
-    v_sim, x, y = simulate_motor(50, V_bat=8.4, dg=dg)
+    v_sim, x, y = simulate_motor(50, V_bat=8.4, dg=4.5)
     v_max = v_sim[-1]
 
     # ---- final speed ----
@@ -76,7 +76,7 @@ def run_sim(dg):
     # plt.show()
 
     ay_max = 10.0      # m/s²
-    ax_brake_max = -7.0  # Bremsen (negativ!)
+    ax_brake_max = -9.0  # Bremsen (negativ!)
 
     v_forward = numpy.copy(v_final)
 
@@ -84,9 +84,9 @@ def run_sim(dg):
     ds = numpy.append(ds, ds[-1]) 
 
     for i in range(len(v_forward) - 1):
-        torque = simulate_torque(v_forward[i], I_max=50, V_bat=8.4, dg=dg)
+        torque = simulate_torque(v_forward[i], I_max=50, V_bat=8.4, dg=4.5)
         F_drag = 0.5 * rho * CdA * v_forward[i]**2
-        ax_acc_max = (torque * dg / 0.031 - F_drag) / mass
+        ax_acc_max = (torque * 4.5 / 0.031 - F_drag) / mass
         v_possible = numpy.sqrt(v_forward[i]**2 + 2 * ax_acc_max * ds[i])
         v_forward[i+1] = numpy.minimum(v_forward[i+1], v_possible)
 
@@ -98,17 +98,16 @@ def run_sim(dg):
 
     v_final =  numpy.copy(v_forward)
 
-    # counter = 0
-    # for i in range(len(v_final) - 2, -1, -1):
-    #     inside = v_final[i+1]**2 + 2 * ax_brake_max * ds[i]
-    #     v_final[i] = numpy.minimum(v_final[i], v_possible)
-    #     counter += 1
-    #     if counter > 500:
-    #         plt.plot(v_final)
-    #         plt.plot(v_forward, '.')
-    #         plt.grid(True)
-    #         plt.show()
-    #         break
+    counter = 0
+    for i in range(len(v_final) - 2, -1, -1):
+        inside = numpy.sqrt(v_final[i+1]**2 - 2 * ax_brake_max * ds[i])
+        v_final[i] = numpy.minimum(v_final[i], inside)
+        counter += 1
+        # if counter > 1:
+        #     plt.plot(v_final)
+        #     plt.plot(i, inside, '.')
+        #     plt.grid(True)
+        #     plt.show()
 
     ay = v_final[i]**2 * abs(curvature[i])
 
@@ -190,24 +189,24 @@ def run_sim(dg):
     return lap_time, v_max
 
 if __name__ == "__main__":
-    lt, v_max = run_sim(4.5)
-    # a_mass = []
-    # a_lt = []
-    # a_v_max = []
-    # for mass in numpy.linspace(2, 6, 50):
-    #     print(f"Übersetung: {mass}")
-    #     lt, v_max = run_sim(mass)
-    #     a_mass.append(mass)
-    #     a_lt.append(lt)
-    #     a_v_max.append(v_max)
-    # plt.subplot(211)
-    # plt.plot(a_mass, a_lt, 'o-')
-    # plt.xlabel("Untersetzung")
-    # plt.ylabel("Lap Time (s)")
-    # plt.grid(True)
-    # plt.subplot(212)
-    # plt.plot(a_mass, a_v_max, 'o-')
-    # plt.xlabel("Untersetzung")
-    # plt.ylabel("Top Speed (m/s)")
-    # plt.grid(True)
-    # plt.show()  
+    # lt, v_max = run_sim(4.5)
+    a_mass = []
+    a_lt = []
+    a_v_max = []
+    for mass in numpy.linspace(1.32, 5, 10):
+        print(f"Übersetung: {mass}")
+        lt, v_max = run_sim(mass)
+        a_mass.append(mass)
+        a_lt.append(lt)
+        a_v_max.append(v_max)
+    plt.subplot(211)
+    plt.plot(a_mass, a_lt, 'o-')
+    plt.xlabel("Untersetzung")
+    plt.ylabel("Lap Time (s)")
+    plt.grid(True)
+    plt.subplot(212)
+    plt.plot(a_mass, a_v_max, 'o-')
+    plt.xlabel("Untersetzung")
+    plt.ylabel("Top Speed (m/s)")
+    plt.grid(True)
+    plt.show()  
