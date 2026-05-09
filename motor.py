@@ -6,6 +6,7 @@ Kv = 2600                           # U/min pro Volt
 Kv_rad = Kv * 2 * numpy.pi / 60     # rad/s pro Volt
 Kt = 1/Kv_rad                       # ~0.00368 Nm/A
 R  = 0.0551                         #Ohm
+R = R + 0.03 + 0.4 + 0.02
 I_max = 50                          #A
 
 # Ruddog 540p 21.5
@@ -43,6 +44,13 @@ def simulate_motor(I_max, V_bat=8.4, dg=4.5):
 def simulate_torque(v, I_max=50, V_bat=8.4, dg=4.5):
     rpm = v * dg / (2 * numpy.pi * 0.031) * 60
     h_i_mot = (V_bat - rpm/Kv) / R
+    i_mot = numpy.minimum(h_i_mot, I_max)
+    torque = i_mot * Kt
+    return torque
+
+def simulate_brktorque(v, I_max=50, V_bat=8.4, dg=4.5):
+    rpm = v * dg / (2 * numpy.pi * 0.031) * 60
+    h_i_mot = (V_bat + 0.5*rpm/Kv) / R
     i_mot = numpy.minimum(h_i_mot, I_max)
     torque = i_mot * Kt
     return torque

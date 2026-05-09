@@ -1,11 +1,11 @@
 import numpy
 import matplotlib.pyplot as plt
-from motor import simulate_motor, simulate_torque
+from motor import simulate_motor, simulate_torque, simulate_brktorque
 from scipy.interpolate import splprep, splev
 from matplotlib.collections import LineCollection
 
-def run_sim(mass):
-    fy_max = 20.5
+def run_sim(dg):
+    fy_max = 30
 
     file = open("track_points.txt", "r")
     track = []
@@ -66,10 +66,10 @@ def run_sim(mass):
     rho = 1.2            # Luftdichte
     CdA = 0.01           # RC typisch klein
     # Cr = 0.015
-    # mass = 1.32          # kg
+    mass = 1.32          # kg
 
     # v_max = v[numpy.argmin(numpy.abs(P_required - P_max))]
-    v_sim, x, y = simulate_motor(50, V_bat=8.4, dg=4.5)
+    v_sim, x, y = simulate_motor(50, V_bat=8.4, dg=dg)
     v_max = v_sim[-1]
 
     # ---- final speed ----
@@ -89,13 +89,12 @@ def run_sim(mass):
 
     ds = numpy.sqrt(numpy.diff(x_fine)**2 + numpy.diff(y_fine)**2)
     ds = numpy.append(ds, ds[-1]) 
-    for _ in range(20):
-        print(v_final[-1] - v_final[0])
+    for _ in range(2):
         v_forward = numpy.copy(v_final)
         for i in range(len(v_forward) - 1):
-            torque = simulate_torque(v_forward[i], I_max=50, V_bat=8.4, dg=4.5)
+            torque = simulate_torque(v_forward[i], I_max=50, V_bat=8.4, dg=dg)
             F_drag = 0.5 * rho * CdA * v_forward[i]**2
-            ax_acc_max = (torque * 4.5 / 0.031 - F_drag) / mass
+            ax_acc_max = (torque * dg / 0.031 - F_drag) / mass
             v_possible = numpy.sqrt(v_forward[i]**2 + 2 * ax_acc_max * ds[i])
             v_forward[i+1] = numpy.minimum(v_forward[i+1], v_possible)
 
@@ -108,11 +107,14 @@ def run_sim(mass):
         v_final =  numpy.copy(v_forward)
 
         for i in range(len(v_final) - 2, -1, -1):
-            torque = abs(simulate_torque(v_forward[i], I_max=50, V_bat=8.4, dg=4.5)*3)
+            torque = abs(simulate_brktorque(v_forward[i], I_max=50, V_bat=8.4, dg=dg))
             F_drag = 0.5 * rho * CdA * v_forward[i]**2
-            ax_brake_max = (torque * 4.5 / 0.031 - F_drag) / mass
+            ax_brake_max = (torque * dg / 0.031 - F_drag) / mass
             inside = numpy.sqrt(v_final[i+1]**2 + 2 * ax_brake_max * ds[i])
             v_final[i] = numpy.minimum(v_final[i], inside)
+        
+        print(v_final[-1] - v_final[0])
+        v_final[0] = v_final[-1]
 
     ay = v_final[i]**2 * abs(curvature[i])
 
@@ -191,14 +193,15 @@ def run_sim(mass):
 
     plt.tight_layout()
     plt.show()
+    print(f'Max RPM: {numpy.max(v_final) * dg/ (2 * numpy.pi * 0.031) * 60}')
     return lap_time, v_max
 
 if __name__ == "__main__":
-    lt, v_max = run_sim(1.32)
+    lt, v_max = run_sim(4.5)
     # a_mass = []
     # a_lt = []
     # a_v_max = []
-    # for mass in numpy.linspace(1.32, 5, 10):
+    # for mass in numpy.linspace(3, 7, 20):
     #     print(f"Übersetung: {mass}")
     #     lt, v_max = run_sim(mass)
     #     a_mass.append(mass)
