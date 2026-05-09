@@ -5,7 +5,7 @@ from scipy.interpolate import splprep, splev
 from matplotlib.collections import LineCollection
 
 def run_sim(mass):
-    fy_max = 13.5
+    fy_max = 20.5
 
     file = open("track_points.txt", "r")
     track = []
@@ -18,10 +18,10 @@ def run_sim(mass):
     y = y/-12.915443745632423
     x = x/12.915443745632423
 
-    x = numpy.append(x, x[0])
-    y = numpy.append(y, y[0])
+    # x = numpy.append(x, x[0])
+    # y = numpy.append(y, y[0])
 
-    tck, u = splprep([x, y], s=8.0, per=True)
+    tck, u = splprep([x, y], s=5, per=True)
 
     # fein aufgelöste Strecke
     u_fine = numpy.linspace(0, 1, 1000)
@@ -58,7 +58,7 @@ def run_sim(mass):
     rho = 1.2            # Luftdichte
     CdA = 0.01           # RC typisch klein
     # Cr = 0.015
-    mass = 1.32          # kg
+    # mass = 1.32          # kg
 
     # v_max = v[numpy.argmin(numpy.abs(P_required - P_max))]
     v_sim, x, y = simulate_motor(50, V_bat=8.4, dg=4.5)
@@ -76,7 +76,6 @@ def run_sim(mass):
     # plt.show()
 
     ay_max = 10.0      # m/s²
-    ax_brake_max = -9.0  # Bremsen (negativ!)
 
     v_forward = numpy.copy(v_final)
 
@@ -100,9 +99,12 @@ def run_sim(mass):
 
     counter = 0
     for i in range(len(v_final) - 2, -1, -1):
-        inside = numpy.sqrt(v_final[i+1]**2 - 2 * ax_brake_max * ds[i])
+        torque = abs(simulate_torque(v_forward[i], I_max=50, V_bat=8.4, dg=4.5)*3)
+        F_drag = 0.5 * rho * CdA * v_forward[i]**2
+        ax_brake_max = (torque * 4.5 / 0.031 - F_drag) / mass
+        inside = numpy.sqrt(v_final[i+1]**2 + 2 * ax_brake_max * ds[i])
         v_final[i] = numpy.minimum(v_final[i], inside)
-        counter += 1
+        # counter += 1
         # if counter > 1:
         #     plt.plot(v_final)
         #     plt.plot(i, inside, '.')
@@ -114,12 +116,13 @@ def run_sim(mass):
     ax_available =  ax_acc_max * numpy.sqrt(numpy.maximum(0, 1 - (ay / ay_max)**2))
 
     # plt.plot(v_final)
+    # plt.plot(v_forward)
     # plt.grid(True)
     # plt.show()
+
     dt = ds / v_final
     lap_time = numpy.sum(dt)
     print(f"Lap time: {lap_time:.2f} seconds")
-
 
     ds = numpy.sqrt(numpy.diff(x_fine)**2 + numpy.diff(y_fine)**2)
     ds = numpy.append(ds, ds[-1])
@@ -151,62 +154,62 @@ def run_sim(mass):
     s = numpy.insert(s, 0, 0.0)
 
     # --- Figure Layout ---
-    # fig = plt.figure(figsize=(14, 6))
-    # gs = fig.add_gridspec(2, 2, height_ratios=[2, 1])
+    fig = plt.figure(figsize=(14, 6))
+    gs = fig.add_gridspec(2, 2, height_ratios=[2, 1])
 
-    # ax_track = fig.add_subplot(gs[:, 0])
-    # ax_v = fig.add_subplot(gs[0, 1])
-    # ax_t = fig.add_subplot(gs[1, 1])
+    ax_track = fig.add_subplot(gs[:, 0])
+    ax_v = fig.add_subplot(gs[0, 1])
+    ax_t = fig.add_subplot(gs[1, 1])
 
-    # # --- LINKS: Strecke ---
-    # ax_track.add_collection(lc)
-    # ax_track.set_xlim(x_fine.min(), x_fine.max())
-    # ax_track.set_ylim(y_fine.min(), y_fine.max())
-    # ax_track.set_aspect('equal')
-    # ax_track.set_title("Track")
-    # ax_track.set_xlabel("X")
-    # ax_track.set_ylabel("Y")
+    # --- LINKS: Strecke ---
+    ax_track.add_collection(lc)
+    ax_track.set_xlim(x_fine.min(), x_fine.max())
+    ax_track.set_ylim(y_fine.min(), y_fine.max())
+    ax_track.set_aspect('equal')
+    ax_track.set_title("Track")
+    ax_track.set_xlabel("X")
+    ax_track.set_ylabel("Y")
 
-    # cbar = plt.colorbar(lc, ax=ax_track)
-    # cbar.set_label("Speed [m/s]")
+    cbar = plt.colorbar(lc, ax=ax_track)
+    cbar.set_label("Speed [m/s]")
 
-    # # --- RECHTS OBEN: Speed Verlauf ---
-    # ax_v.plot(s[1:], v_final, label="Speed")
-    # ax_v.set_title("Velocity profile")
-    # # ax_v.set_xlabel("Distance index")
-    # ax_v.set_ylabel("v [m/s]")
-    # ax_v.grid(True)
+    # --- RECHTS OBEN: Speed Verlauf ---
+    ax_v.plot(s[1:], v_final, label="Speed")
+    ax_v.set_title("Velocity profile")
+    # ax_v.set_xlabel("Distance index")
+    ax_v.set_ylabel("v [m/s]")
+    ax_v.grid(True)
 
-    # # --- RECHTS UNTEN: Zeit ---
-    # ax_t.plot(s, t, label="Time")
-    # ax_t.set_title(f"Lap time: {lap_time:.3f} s")
-    # # ax_t.set_xlabel("Distance index")
-    # ax_t.set_ylabel("t [s]")
-    # ax_t.grid(True)
+    # --- RECHTS UNTEN: Zeit ---
+    ax_t.plot(s, t, label="Time")
+    ax_t.set_title(f"Lap time: {lap_time:.3f} s")
+    # ax_t.set_xlabel("Distance index")
+    ax_t.set_ylabel("t [s]")
+    ax_t.grid(True)
 
-    # plt.tight_layout()
-    # plt.show()
+    plt.tight_layout()
+    plt.show()
     return lap_time, v_max
 
 if __name__ == "__main__":
-    # lt, v_max = run_sim(4.5)
-    a_mass = []
-    a_lt = []
-    a_v_max = []
-    for mass in numpy.linspace(1.32, 5, 10):
-        print(f"Übersetung: {mass}")
-        lt, v_max = run_sim(mass)
-        a_mass.append(mass)
-        a_lt.append(lt)
-        a_v_max.append(v_max)
-    plt.subplot(211)
-    plt.plot(a_mass, a_lt, 'o-')
-    plt.xlabel("Untersetzung")
-    plt.ylabel("Lap Time (s)")
-    plt.grid(True)
-    plt.subplot(212)
-    plt.plot(a_mass, a_v_max, 'o-')
-    plt.xlabel("Untersetzung")
-    plt.ylabel("Top Speed (m/s)")
-    plt.grid(True)
-    plt.show()  
+    lt, v_max = run_sim(1.32)
+    # a_mass = []
+    # a_lt = []
+    # a_v_max = []
+    # for mass in numpy.linspace(1.32, 5, 10):
+    #     print(f"Übersetung: {mass}")
+    #     lt, v_max = run_sim(mass)
+    #     a_mass.append(mass)
+    #     a_lt.append(lt)
+    #     a_v_max.append(v_max)
+    # plt.subplot(211)
+    # plt.plot(a_mass, a_lt, 'o-')
+    # plt.xlabel("Untersetzung")
+    # plt.ylabel("Lap Time (s)")
+    # plt.grid(True)
+    # plt.subplot(212)
+    # plt.plot(a_mass, a_v_max, 'o-')
+    # plt.xlabel("Untersetzung")
+    # plt.ylabel("Top Speed (m/s)")
+    # plt.grid(True)
+    # plt.show()  
