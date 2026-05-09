@@ -18,10 +18,10 @@ def run_sim(mass):
     y = y/-12.915443745632423
     x = x/12.915443745632423
 
-    # x = numpy.append(x, x[0])
-    # y = numpy.append(y, y[0])
+    x = numpy.append(x, x[0])
+    y = numpy.append(y, y[0])
 
-    tck, u = splprep([x, y], s=5, per=True)
+    tck, u = splprep([x, y], s=9, per=True)
 
     # fein aufgelöste Strecke
     u_fine = numpy.linspace(0, 1, 1000)
@@ -32,6 +32,14 @@ def run_sim(mass):
 
     # ---- 3. Krümmung berechnen ----
     curvature = (dx * ddy - dy * ddx) / (dx**2 + dy**2)**1.5
+    # print(curvature[0])
+    # print(curvature[-1])
+
+    # plt.figure(figsize=(12,4))
+    # plt.plot(curvature)
+    # plt.xlim(0,50)
+    # plt.grid(True)
+    # plt.show()
 
     # ---- 4. Plot ----
     # plt.figure(figsize=(10, 5))
@@ -77,39 +85,34 @@ def run_sim(mass):
 
     ay_max = 10.0      # m/s²
 
-    v_forward = numpy.copy(v_final)
+    # v_forward = numpy.copy(v_final)
 
     ds = numpy.sqrt(numpy.diff(x_fine)**2 + numpy.diff(y_fine)**2)
     ds = numpy.append(ds, ds[-1]) 
+    for _ in range(20):
+        print(v_final[-1] - v_final[0])
+        v_forward = numpy.copy(v_final)
+        for i in range(len(v_forward) - 1):
+            torque = simulate_torque(v_forward[i], I_max=50, V_bat=8.4, dg=4.5)
+            F_drag = 0.5 * rho * CdA * v_forward[i]**2
+            ax_acc_max = (torque * 4.5 / 0.031 - F_drag) / mass
+            v_possible = numpy.sqrt(v_forward[i]**2 + 2 * ax_acc_max * ds[i])
+            v_forward[i+1] = numpy.minimum(v_forward[i+1], v_possible)
 
-    for i in range(len(v_forward) - 1):
-        torque = simulate_torque(v_forward[i], I_max=50, V_bat=8.4, dg=4.5)
-        F_drag = 0.5 * rho * CdA * v_forward[i]**2
-        ax_acc_max = (torque * 4.5 / 0.031 - F_drag) / mass
-        v_possible = numpy.sqrt(v_forward[i]**2 + 2 * ax_acc_max * ds[i])
-        v_forward[i+1] = numpy.minimum(v_forward[i+1], v_possible)
 
+        # plt.plot(v_final)
+        # plt.plot(v_forward, '.')
+        # plt.grid(True)
+        # plt.show()
 
-    # plt.plot(v_final)
-    # plt.plot(v_forward, '.')
-    # plt.grid(True)
-    # plt.show()
+        v_final =  numpy.copy(v_forward)
 
-    v_final =  numpy.copy(v_forward)
-
-    counter = 0
-    for i in range(len(v_final) - 2, -1, -1):
-        torque = abs(simulate_torque(v_forward[i], I_max=50, V_bat=8.4, dg=4.5)*3)
-        F_drag = 0.5 * rho * CdA * v_forward[i]**2
-        ax_brake_max = (torque * 4.5 / 0.031 - F_drag) / mass
-        inside = numpy.sqrt(v_final[i+1]**2 + 2 * ax_brake_max * ds[i])
-        v_final[i] = numpy.minimum(v_final[i], inside)
-        # counter += 1
-        # if counter > 1:
-        #     plt.plot(v_final)
-        #     plt.plot(i, inside, '.')
-        #     plt.grid(True)
-        #     plt.show()
+        for i in range(len(v_final) - 2, -1, -1):
+            torque = abs(simulate_torque(v_forward[i], I_max=50, V_bat=8.4, dg=4.5)*3)
+            F_drag = 0.5 * rho * CdA * v_forward[i]**2
+            ax_brake_max = (torque * 4.5 / 0.031 - F_drag) / mass
+            inside = numpy.sqrt(v_final[i+1]**2 + 2 * ax_brake_max * ds[i])
+            v_final[i] = numpy.minimum(v_final[i], inside)
 
     ay = v_final[i]**2 * abs(curvature[i])
 
@@ -132,7 +135,6 @@ def run_sim(mass):
     t = numpy.insert(t, 0, 0.0)
 
     lap_time = t[-1]
-
 
     points = numpy.array([x_fine, y_fine]).T.reshape(-1, 1, 2)
     segments = numpy.concatenate([points[:-1], points[1:]], axis=1)
