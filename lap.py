@@ -5,7 +5,7 @@ from scipy.interpolate import splprep, splev
 from matplotlib.collections import LineCollection
 
 def run_sim(dg):
-    fy_max = 30
+    # Track definition
 
     file = open("track_points.txt", "r")
     track = []
@@ -21,7 +21,7 @@ def run_sim(dg):
     x = numpy.append(x, x[0])
     y = numpy.append(y, y[0])
 
-    tck, u = splprep([x, y], s=9, per=True)
+    tck, u = splprep([x, y], s=6, per=True)
 
     # fein aufgelöste Strecke
     u_fine = numpy.linspace(0, 1, 1000)
@@ -61,12 +61,15 @@ def run_sim(dg):
     kappa_safe = numpy.copy(curvature)
     kappa_safe[numpy.abs(kappa_safe) < 1e-6] = 1e-6
 
-    v_corner = numpy.sqrt(fy_max / numpy.abs(kappa_safe))
-
     rho = 1.2            # Luftdichte
     CdA = 0.01           # RC typisch klein
-    # Cr = 0.015
     mass = 1.32          # kg
+    mu = 0.8             # Reifenhaftung (Gummi auf Teppich/Asphalt)
+    g = 9.81
+    
+    fy_max = mass*mu*g
+
+    v_corner = numpy.sqrt(fy_max*4 / numpy.abs(kappa_safe))
 
     # v_max = v[numpy.argmin(numpy.abs(P_required - P_max))]
     v_sim, x, y = simulate_motor(50, V_bat=8.4, dg=dg)
@@ -83,7 +86,7 @@ def run_sim(dg):
     # plt.grid(True)
     # plt.show()
 
-    ay_max = 10.0      # m/s²
+    ay_max = mu*g
 
     # v_forward = numpy.copy(v_final)
 
@@ -97,7 +100,6 @@ def run_sim(dg):
             ax_acc_max = (torque * dg / 0.031 - F_drag) / mass
             v_possible = numpy.sqrt(v_forward[i]**2 + 2 * ax_acc_max * ds[i])
             v_forward[i+1] = numpy.minimum(v_forward[i+1], v_possible)
-
 
         # plt.plot(v_final)
         # plt.plot(v_forward, '.')
@@ -192,8 +194,38 @@ def run_sim(dg):
     ax_t.grid(True)
 
     plt.tight_layout()
-    plt.show()
+    
     print(f'Max RPM: {numpy.max(v_final) * dg/ (2 * numpy.pi * 0.031) * 60}')
+
+    track_marker, = ax_track.plot([], [], 'ro', markersize=8)
+    cursor_line = ax_v.axvline(0, color='orange', linestyle='--')
+
+    def on_move(event):
+
+        # Nur wenn Maus im Velocity Plot
+        if event.inaxes != ax_v:
+            return
+
+        if event.xdata is None:
+            return
+
+        # passenden Streckenindex finden
+        idx = numpy.argmin(numpy.abs(s[:-1] - event.xdata))
+
+        # Marker auf Strecke bewegen
+        track_marker.set_data(
+            [x_fine[idx]],
+            [y_fine[idx]]
+        )
+
+        # Vertikale Linie im Velocity Plot
+        cursor_line.set_xdata([s[idx], s[idx]])
+
+        fig.canvas.draw_idle()
+
+    fig.canvas.mpl_connect('motion_notify_event', on_move)
+    plt.show()
+
     return lap_time, v_max
 
 if __name__ == "__main__":
