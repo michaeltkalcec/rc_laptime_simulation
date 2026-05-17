@@ -4,7 +4,7 @@ from motor import simulate_motor, simulate_torque, simulate_brktorque
 from scipy.interpolate import splprep, splev
 from matplotlib.collections import LineCollection
 
-def run_sim(dg):
+def run_sim(mass):
     # Track definition
 
     file = open("track_points.txt", "r")
@@ -63,7 +63,7 @@ def run_sim(dg):
 
     rho = 1.2            # Luftdichte
     CdA = 0.01           # RC typisch klein
-    mass = 1.32          # kg
+    mass = mass          # kg
     mu = 0.8             # Reifenhaftung (Gummi auf Teppich/Asphalt)
     g = 9.81
     
@@ -72,7 +72,7 @@ def run_sim(dg):
     v_corner = numpy.sqrt(fy_max*4 / numpy.abs(kappa_safe))
 
     # v_max = v[numpy.argmin(numpy.abs(P_required - P_max))]
-    v_sim, x, y = simulate_motor(50, V_bat=8.4, dg=dg)
+    v_sim, x, y = simulate_motor(50, V_bat=8.4, dg=4.5)
     v_max = v_sim[-1]
 
     # ---- final speed ----
@@ -95,9 +95,9 @@ def run_sim(dg):
     for _ in range(2):
         v_forward = numpy.copy(v_final)
         for i in range(len(v_forward) - 1):
-            torque = simulate_torque(v_forward[i], I_max=50, V_bat=8.4, dg=dg)
+            torque = simulate_torque(v_forward[i], I_max=50, V_bat=8.4, dg=4.5)
             F_drag = 0.5 * rho * CdA * v_forward[i]**2
-            ax_acc_max = (torque * dg / 0.031 - F_drag) / mass
+            ax_acc_max = (torque * 4.5 / 0.031 - F_drag) / mass
             v_possible = numpy.sqrt(v_forward[i]**2 + 2 * ax_acc_max * ds[i])
             v_forward[i+1] = numpy.minimum(v_forward[i+1], v_possible)
 
@@ -109,9 +109,9 @@ def run_sim(dg):
         v_final =  numpy.copy(v_forward)
 
         for i in range(len(v_final) - 2, -1, -1):
-            torque = abs(simulate_brktorque(v_forward[i], I_max=50, V_bat=8.4, dg=dg))
+            torque = abs(simulate_brktorque(v_forward[i], I_max=50, V_bat=8.4, dg=4.5))
             F_drag = 0.5 * rho * CdA * v_forward[i]**2
-            ax_brake_max = (torque * dg / 0.031 - F_drag) / mass
+            ax_brake_max = (torque * 4.5/ 0.031 - F_drag) / mass
             inside = numpy.sqrt(v_final[i+1]**2 + 2 * ax_brake_max * ds[i])
             v_final[i] = numpy.minimum(v_final[i], inside)
         
@@ -160,48 +160,7 @@ def run_sim(dg):
     s = numpy.insert(s, 0, 0.0)
 
     # --- Figure Layout ---
-    fig = plt.figure(figsize=(14, 6))
-    gs = fig.add_gridspec(2, 2, height_ratios=[2, 1])
-
-    ax_track = fig.add_subplot(gs[:, 0])
-    ax_v = fig.add_subplot(gs[0, 1])
-    ax_t = fig.add_subplot(gs[1, 1])
-
-    # --- LINKS: Strecke ---
-    ax_track.add_collection(lc)
-    ax_track.set_xlim(x_fine.min(), x_fine.max())
-    ax_track.set_ylim(y_fine.min(), y_fine.max())
-    ax_track.set_aspect('equal')
-    ax_track.set_title("Track")
-    ax_track.set_xlabel("X")
-    ax_track.set_ylabel("Y")
-
-    cbar = plt.colorbar(lc, ax=ax_track)
-    cbar.set_label("Speed [m/s]")
-
-    # --- RECHTS OBEN: Speed Verlauf ---
-    ax_v.plot(s[1:], v_final, label="Speed")
-    ax_v.set_title("Velocity profile")
-    # ax_v.set_xlabel("Distance index")
-    ax_v.set_ylabel("v [m/s]")
-    ax_v.grid(True)
-
-    # --- RECHTS UNTEN: Zeit ---
-    ax_t.plot(s, t, label="Time")
-    ax_t.set_title(f"Lap time: {lap_time:.3f} s")
-    # ax_t.set_xlabel("Distance index")
-    ax_t.set_ylabel("t [s]")
-    ax_t.grid(True)
-
-    plt.tight_layout()
-    
-    print(f'Max RPM: {numpy.max(v_final) * dg/ (2 * numpy.pi * 0.031) * 60}')
-
-    track_marker, = ax_track.plot([], [], 'ro', markersize=8)
-    cursor_line = ax_v.axvline(0, color='orange', linestyle='--')
-
     def on_move(event):
-
         # Nur wenn Maus im Velocity Plot
         if event.inaxes != ax_v:
             return
@@ -222,18 +181,61 @@ def run_sim(dg):
         cursor_line.set_xdata([s[idx], s[idx]])
 
         fig.canvas.draw_idle()
+    if True:
+        fig = plt.figure(figsize=(14, 6))
+        gs = fig.add_gridspec(2, 2, height_ratios=[2, 1])
 
-    fig.canvas.mpl_connect('motion_notify_event', on_move)
-    plt.show()
+        ax_track = fig.add_subplot(gs[:, 0])
+        ax_v = fig.add_subplot(gs[0, 1])
+        ax_t = fig.add_subplot(gs[1, 1])
+
+        # --- LINKS: Strecke ---
+        ax_track.add_collection(lc)
+        ax_track.set_xlim(x_fine.min(), x_fine.max())
+        ax_track.set_ylim(y_fine.min(), y_fine.max())
+        ax_track.set_aspect('equal')
+        ax_track.set_title("Track")
+        ax_track.set_xlabel("X")
+        ax_track.set_ylabel("Y")
+
+        cbar = plt.colorbar(lc, ax=ax_track)
+        cbar.set_label("Speed [m/s]")
+
+        # --- RECHTS OBEN: Speed Verlauf ---
+        ax_v.plot(s[1:], v_final, label="Speed")
+        ax_v.set_title("Velocity profile")
+        # ax_v.set_xlabel("Distance index")
+        ax_v.set_ylabel("v [m/s]")
+        ax_v.grid(True)
+
+        # --- RECHTS UNTEN: Zeit ---
+        ax_t.plot(s, t, label="Time")
+        ax_t.set_title(f"Lap time: {lap_time:.3f} s")
+        # ax_t.set_xlabel("Distance index")
+        ax_t.set_ylabel("t [s]")
+        ax_t.grid(True)
+
+        plt.tight_layout()
+        
+        print(f'Max RPM: {numpy.max(v_final) * 4.5/ (2 * numpy.pi * 0.031) * 60}')
+
+        track_marker, = ax_track.plot([], [], 'ro', markersize=8)
+        cursor_line = ax_v.axvline(0, color='orange', linestyle='--')
+
+        fig.canvas.mpl_connect('motion_notify_event', on_move)
+        plt.show()
+
+
+
 
     return lap_time, v_max
 
 if __name__ == "__main__":
-    lt, v_max = run_sim(4.5)
+    lt, v_max = run_sim(1)
     # a_mass = []
     # a_lt = []
     # a_v_max = []
-    # for mass in numpy.linspace(3, 7, 20):
+    # for mass in numpy.linspace(1, 10, 20):
     #     print(f"Übersetung: {mass}")
     #     lt, v_max = run_sim(mass)
     #     a_mass.append(mass)
